@@ -1,10 +1,13 @@
 nodemcu = {
   tmrs = {},
-  run_tmr = function(interval, type)
-    for _,v in pairs(nodemcu.tmrs) do
+  run_tmr = function(interval, type, reset)
+    for i,v in pairs(nodemcu.tmrs) do
       if v.interval == interval and v.type == type then
         print('Running tmr ' .. type .. ', interval:', interval )
-        return v.fn({unregister = function() end})
+        if type == tmr.ALARM_SINGLE and reset then
+          table.remove(nodemcu.tmrs, i)
+        end
+        v.fn({stop = function() end, start = function() end, unregister = function() end})
       end
     end
   end,
@@ -22,6 +25,8 @@ _G.node = {
   heap = function() return 0 end,
   chipid = function() return 0 end,
   restart = function() end,
+  flashindex = function() return true end,
+  flashreload = function() end,
   info = function() return 1, 5, 4 end
 }
 
@@ -46,7 +51,8 @@ _G.tmr = {
         })
       end,
       unregister = function() end,
-      start = function() end
+      start = function() end,
+      stop = function() end
     }
   end
 }
@@ -57,11 +63,12 @@ _G.file = {
 }
 
 _G.gpio = {
-  HIGH = 'HIGH',
-  LOW = 'LOW',
+  HIGH = 1,
+  LOW = 0,
   mode = function() end,
   read = function() end,
-  write = function() end
+  write = function() end,
+  trig = function() end
 }
 
 _G.wifi = {
@@ -99,8 +106,51 @@ _G.net = {
       listen = function() end,
       on = function() end
     }
+  end,
+  createUDPSocket = function()
+    return {
+      listen = function() end,
+      on = function() end
+    }
   end
 }
+
+_G.http = {
+  get = function() end,
+  put = function() end,
+  post = function() end
+}
+
+_G.unpack = function(t, i)
+  i = i or 1
+  if t[i] ~= nil then
+    return t[i], unpack(t, i + 1)
+  end
+end
+
+_G.sntp = {
+  sync = function(_, success, fail)
+    success()
+  end
+}
+
+_G.rtctime = {
+  epoch2cal = function()
+    return {
+      year = 2019,
+      mon = 9,
+      day = 17,
+      hour = 17,
+      min = 46,
+      sec = 58
+    }
+  end
+}
+
+local df = dofile
+_G.dofile = function(n)
+  df('src/lfs/' .. n)
+end
 
 -- Print contents of `tbl`, with indentation.
 -- `indent` sets the initial level of indentation.

@@ -14,7 +14,7 @@
  *
  */
 metadata {
-  definition (name: "Konnected Momentary Switch", namespace: "konnected-io", author: "konnected.io") {
+  definition (name: "Konnected Momentary Switch", namespace: "konnected-io", author: "konnected.io", mnmn: "SmartThings", vid: "generic-switch") {
     capability "Switch"
     capability "Actuator"
     capability "Momentary"
@@ -31,8 +31,8 @@ metadata {
     multiAttributeTile(name:"main", type: "generic", width: 6, height: 4, canChangeIcon: true) {
       tileAttribute ("device.switch", key: "PRIMARY_CONTROL") {
         attributeState "off", label: 'Push', action: "momentary.push", backgroundColor: "#ffffff", nextState: "pushed"
-        attributeState "on", label: 'Push', action: "momentary.push", backgroundColor: "#00a0dc"
-        attributeState "pushed", label:'pushed', action: "momentary.push", backgroundColor:"#00a0dc", nextState: "off"
+        attributeState "on", label: 'Push', action: "switch.off", backgroundColor: "#00a0dc"
+        attributeState "pushed", label:'pushed', action: "switch.off", backgroundColor:"#00a0dc", nextState: "off"
       }
     }
     main "main"
@@ -41,16 +41,27 @@ metadata {
 }
 
 def updated() {
-  parent.updateSettingsOnChildDevice(device.deviceNetworkId)
+  parent.updateSettingsOnDevice()
 }
 
 def updatePinState(Integer state) {
-  sendEvent(name: "switch", value: "on", isStateChange: true, display: false)
+  def off = invertTrigger ? 1 : 0
+  if (state == off) {
+    sendEvent(name: "switch", value: "off", isStateChange: true, display: false)
+  } else {
+    sendEvent(name: "switch", value: "on", isStateChange: true, display: false)
+    def delaySeconds = (momentaryDelay ?: 1000) / 1000 as Integer
+    runIn(Math.max(delaySeconds, 1), switchOff)
+  }
+}
+
+def switchOff() {
   sendEvent(name: "switch", value: "off", isStateChange: true, display: false)
 }
 
 def off() {
-  push()
+  def val = invertTrigger ? 1 : 0
+  parent.deviceUpdateDeviceState(device.deviceNetworkId, val)
 }
 
 def on() {
@@ -66,4 +77,12 @@ def push() {
 
 def triggerLevel() {
   return invertTrigger ? 0 : 1
+}
+
+def currentBinaryValue() {
+  if (device.currentValue('switch') == 'on') {
+    invertTrigger ? 0 : 1
+  } else {
+    invertTrigger ? 1 : 0
+  }
 }
